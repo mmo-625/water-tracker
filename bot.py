@@ -5,6 +5,8 @@ from datetime import date
 import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -139,6 +141,24 @@ async def on_message(message):
         response = f"Added {oz} oz → +{pts} points!"
 
     await message.channel.send(response)
+
+
+
+# Connect to port for Render Deployment
+class KeepAliveHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is running")
+
+def run_keep_alive_server():
+    port = int(os.environ.get("PORT", 8080))  # Render injects PORT
+    server = HTTPServer(("0.0.0.0", port), KeepAliveHandler)
+    print(f"Keep-alive server running on port {port}")
+    server.serve_forever()
+
+# Start the dummy web server in a background thread
+threading.Thread(target=run_keep_alive_server, daemon=True).start()
 
 # Run bot
 bot.run(TOKEN)
