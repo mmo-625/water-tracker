@@ -5,6 +5,8 @@ from datetime import date
 import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -142,3 +144,16 @@ async def on_message(message):
 
 # Run bot
 bot.run(TOKEN)
+
+# Connect to port for Render Deployment
+class DummyHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
+
+def run_dummy_server():
+    server = HTTPServer(("0.0.0.0", 10000), DummyHandler)
+    server.serve_forever()
+
+threading.Thread(target=run_dummy_server, daemon=True).start()
