@@ -13,10 +13,6 @@ url = os.getenv('SUPABASE_URL')
 key = os.getenv('SUPABASE_KEY')
 supabase: Client = create_client(url, key)
 
-
-
-DB_FILE = "data.json"
-
 intents = discord.Intents.default()
 intents.message_content = True
 
@@ -49,14 +45,9 @@ def get_user_daily_points(id):
         total_points += pts['points']
     return total_points
 
-
-
 def get_daily_leaderboard():
     today_str = date.today().isoformat()
     return supabase.rpc("daily_leaderboard", {"today":today_str}).execute().data
-
-    
-
 
 def get_all_time_leaderboard():
     return supabase.rpc("alltime_leaderboard").execute().data
@@ -71,17 +62,6 @@ def add_goal(id, goal_oz, goal_time):
     .eq("id",id)\
     .execute()
 
-def load_db():
-    try:
-        with open(DB_FILE, "r") as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {"users": []}
-
-def save_db(data):
-    with open(DB_FILE, "w") as f:
-        json.dump(data, f, indent=2)
-
 def get_points(oz):
     if oz <-120: return -2
     if oz <-90: return -1.5
@@ -92,13 +72,6 @@ def get_points(oz):
     if oz < 90: return 1
     if oz < 120: return 1.5
     return 2
-
-#def get_user(data, user_id, username):
-#    user = next((u for u in data["users"] if u["id"] == user_id), None)
-#    if not user:
-#        user = {"id": user_id, "name": username, "records": []}
-#        data["users"].append(user)
-#    return user
 
 # ---------- Bot Commands ----------
 @bot.event
@@ -116,10 +89,7 @@ async def on_message(message):
     if user.count is None:
         user = add_user(message.author.id, message.author.name)
     print(f"USER: {user}")
-
-    #data = load_db()
-    #user = get_user(data, str(message.author.id), message.author.name)
-
+    
     response = ""
 
     # Command: help
@@ -135,12 +105,6 @@ async def on_message(message):
 
     # Command: leaderboard
     elif content in ("!leaderboard", "leaderboard"):
-        #leaderboard = sorted(
-        #    [{"name": u["name"], "points": sum(r["points"] for r in u["records"])}
-        #     for u in data["users"]],
-        #    key=lambda x: x["points"],
-        #    reverse=True
-        #)
         daily_leaderboard = get_daily_leaderboard()
         all_leaderboard = get_all_time_leaderboard()
         print(f"daily: {daily_leaderboard}")
@@ -153,20 +117,13 @@ async def on_message(message):
 
         if all_leaderboard:
             lines = [f"{i+1}. {u['user_id']}: {u['total_points']}" for i, u in enumerate(all_leaderboard[:10])]
-            res2 = "**🏆 All Time Leaderboard:**\n" + "\n".join(lines)
+            res2 = "\n**🏆 All Time Leaderboard:**\n" + "\n".join(lines)
         else:
-            res2 = "**🏆 All Time Leaderboard:**\nNo entries at all."
+            res2 = "\n**🏆 All Time Leaderboard:**\nNo entries at all."
         response = res1 + res2
-        #if leaderboard:
-        #    lines = [f"{i+1}. {u['name']}: {u['points']}" for i, u in enumerate(leaderboard[:10])]
-        #    response = "**🏆 Leaderboard:**\n" + "\n".join(lines)
-        #else:
-        #    response = "No entries yet."
 
     # Command: today
     elif content in ("!today", "today"):
-        #today_str = date.today().isoformat()
-        #today_points = sum(r["points"] for r in user["records"] if r["date"] == today_str)
         todays_points = get_user_daily_points(message.author.name)
         response = f"💧 {message.author.name}, today you have {todays_points} points."
 
@@ -180,16 +137,6 @@ async def on_message(message):
         pts = get_points(oz)
         add_record(message.author.name, oz, pts, date.today().isoformat())
         response = f"Added {oz} oz → +{pts} points!"
-
-    #else:
-    #    try:
-    #        oz = float(content)
-    #        pts = get_points(oz)
-    #        user["records"].append({"date": date.today().isoformat(), "oz": oz, "points": pts})
-    #        save_db(data)
-    #         response = f"Added {oz} oz → +{pts} points!"
-    #    except ValueError:
-    #        response = "Unrecognized command. Type `!help` for options."
 
     await message.channel.send(response)
 
