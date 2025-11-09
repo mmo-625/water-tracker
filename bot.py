@@ -142,18 +142,23 @@ async def on_message(message):
 
     await message.channel.send(response)
 
-# Run bot
-bot.run(TOKEN)
+
 
 # Connect to port for Render Deployment
-class DummyHandler(BaseHTTPRequestHandler):
+class KeepAliveHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"OK")
+        self.wfile.write(b"Bot is running")
 
-def run_dummy_server():
-    server = HTTPServer(("0.0.0.0", 10000), DummyHandler)
+def run_keep_alive_server():
+    port = int(os.environ.get("PORT", 8080))  # Render injects PORT
+    server = HTTPServer(("0.0.0.0", port), KeepAliveHandler)
+    print(f"Keep-alive server running on port {port}")
     server.serve_forever()
 
-threading.Thread(target=run_dummy_server, daemon=True).start()
+# Start the dummy web server in a background thread
+threading.Thread(target=run_keep_alive_server, daemon=True).start()
+
+# Run bot
+bot.run(TOKEN)
